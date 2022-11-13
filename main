@@ -1,0 +1,267 @@
+#!/bin/bash
+
+#!/bin/bash
+
+declare -A matrix
+
+num_rows=3
+num_columns=3
+
+player=0
+pointerWinner=0
+
+isComputerEnabled=false
+isPositionError=false
+
+draw_board () {
+  echo "PLAYER 1 [X]"
+  echo "PLAYER 2 [Y]"
+  echo ""
+  echo "|  ${matrix[0,0]}  |  ${matrix[1,0]}   |  ${matrix[2,0]}   |"
+  echo "|-----|------|------|"
+  echo "|  ${matrix[0,1]}  |  ${matrix[1,1]}   |  ${matrix[2,1]}   |"
+  echo "|-----|------|------|"
+  echo "|  ${matrix[0,2]}  |  ${matrix[1,2]}   |  ${matrix[2,2]}   |"
+}
+
+check_winner_horizontal(){
+  local tmpX=0
+  local tmpY=0
+  local row=0
+  local column=0
+  while [ $row -lt 3 ] && [ $column -lt 3 ]
+  do
+    if [ "${matrix[$column,$row]}" == "X" ]
+    then
+      tmpX=$((tmpX + 1))
+    fi
+    if [ "${matrix[$column,$row]}" == "Y" ]
+    then
+      tmpY=$((tmpY + 1))
+    fi
+    if [ $tmpX = 3 ]
+    then
+      pointerWinner=100
+    fi
+    if [ $tmpY = 3 ]
+    then
+      pointerWinner=200
+    fi
+    if [ $row = 2 ]
+    then
+      tmpX=0
+      tmpY=0
+      column=$((column + 1))
+      row=0
+    else
+    row=$((row+1))
+    fi
+    done
+
+    if [ $pointerWinner = 100 ]
+    then
+      echo "WIN X"
+      exit
+    fi
+    if [ $pointerWinner = 200 ]
+    then
+      echo "WIN Y"
+      exit
+    fi
+}
+computer_turn() {
+  local tmpX=0
+  local tmpY=0
+  while [ "${matrix[$tmpX,$tmpY]}" != "0"  ]
+  do
+    tmpX=$((0 + $RANDOM % 2))
+    tmpY=$((0 + $RANDOM % 2))
+  done
+
+  if [ "$player" == "X" ]
+    then
+    matrix[$tmpX,$tmpY]="Y"
+    else
+    matrix[$tmpX,$tmpY]="X"
+  fi
+}
+
+check_draw(){
+  local allCombinations=9
+  local tmpCounter=0
+  for ((i=0;i<num_rows;i++)) do
+    for ((j=0;j<num_columns;j++)) do
+        if [ "${matrix[$i,$j]}" != "0" ]
+        then
+          tmpCounter=$((tmpCounter+1))
+        fi
+    done
+  done
+
+  if [ "${matrix[$i,$j]}" == "$allCombinations" ]
+  then
+    echo "DRAW!"
+    exit
+  fi
+}
+
+check_winner_diagonal(){
+  if [ "${matrix[0,0]}" == "X" ] && [ "${matrix[1,1]}" == "X" ] && [ "${matrix[2,2]}" == "X" ]
+  then
+    echo "WIN X"
+    exit
+  elif [ "${matrix[0,0]}" == "Y" ] && [ "${matrix[1,1]}" == "Y" ] && [ "${matrix[2,2]}" == "Y" ]
+  then
+    echo "WIN Y"
+    exit
+  fi
+   if [ "${matrix[0,2]}" == "X" ] && [ "${matrix[1,1]}" == "X" ] && [ "${matrix[2,0]}" == "X" ]
+  then
+    echo "WIN X"
+    exit
+  elif [ "${matrix[0,2]}" == "Y" ] && [ "${matrix[1,1]}" == "Y" ] && [ "${matrix[2,0]}" == "Y" ]
+  then
+    echo "WIN Y"
+    exit
+  fi
+}
+
+save_matrix_to_file(){
+  for ((i=0;i<num_rows;i++)) do
+    for ((j=0;j<num_columns;j++)) do
+        echo "${matrix[$i,$j]}"
+    done
+  done >temp.txt
+}
+
+load_matrix_from_file(){
+  local tempColumn=0
+  local tempRaw=0
+  while IFS= read -r line; do
+      if [ "$tempRaw" == 3 ]
+      then
+        tempColumn=$((tempColumn+1))
+        tempRaw=0
+      fi
+      matrix[$tempColumn,$tempRaw]=$line
+      tempRaw=$((tempRaw+1))
+
+  done < temp.txt
+}
+
+echo "Choose which letter do you want to play"
+echo "1 - X"
+echo "2 - Y"
+while read -r line
+do
+    if [ "$line" == "1" ]
+    then
+      player="X"
+    else
+      player="Y"
+    fi
+    break
+done
+
+echo $player
+
+echo "Do you want to load game from a file?"
+echo "1 - Yes"
+echo "2 - No"
+while read -r line
+do
+    if [ "$line" == "1" ]
+    then
+      load_matrix_from_file
+    else
+      for ((i=0;i<=num_rows;i++)) do
+        for ((j=0;j<=num_columns;j++)) do
+            matrix[$i,$j]=0
+        done
+      done
+    fi
+    break
+done
+
+echo "Do you want to play with computer?"
+echo "1 - Yes"
+echo "2 - No"
+while read -r line
+do
+    if [ "$line" == "1" ]
+    then
+      isComputerEnabled=true
+    fi
+    break
+done
+
+echo "If you want to save a game, write 100"
+echo ""
+
+draw_board
+
+while read input
+do
+    clear
+    arrayInput=(${input// / })
+
+    if [ ${arrayInput[0]} == 100 ]
+    then
+      echo "SAVING..."
+      save_matrix_to_file
+      exit
+    fi
+
+    if [ ${#arrayInput[0]} -le 2  ] && [ ${#arrayInput[1]} -le 2  ] && [ ${#arrayInput[0]} -ge 0  ] && [ ${#arrayInput[1]} -ge 0  ]
+    then
+      if [ "${matrix[${arrayInput[0]},${arrayInput[1]}]}" == "0" ]
+      then
+        isPositionError=false
+        if [ "$player" == "X" ]
+        then
+          matrix[${arrayInput[0]},${arrayInput[1]}]="X"
+
+          if [ "$isComputerEnabled" == false ]
+          then
+            player="Y"
+          fi
+        else
+          matrix[${arrayInput[0]},${arrayInput[1]}]="Y"
+          if [ "$isComputerEnabled" == false ]
+          then
+            player="X"
+          fi
+        fi
+        else
+          isPositionError=true
+          clear
+          echo ""
+          echo "This position is used! Take another"
+          echo ""
+      fi
+      else
+        isPositionError=true
+        clear
+        echo ""
+        echo "This position is used! Take another"
+        echo ""
+    fi
+
+    check_winner_horizontal
+    check_winner_diagonal
+    draw_board
+    check_draw
+
+    if [ "$isComputerEnabled" == true ] && [ "$isPositionError" == false ]
+    then
+      computer_turn
+
+      draw_board
+      check_winner_horizontal
+      check_winner_diagonal
+      check_draw
+    fi
+
+
+done
+
